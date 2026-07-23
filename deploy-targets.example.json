@@ -1,0 +1,26 @@
+{
+  "targets": {
+    "ica.accuro.es": {
+      "backend": "sftp",
+      "host": "sftp.accuro.es",
+      "port": 22,
+      "remotePath": "/html/",
+      "usernameEnv": "ACCURO_SFTP_USER",
+      "passwordEnv": "ACCURO_SFTP_PASS"
+    },
+    "unid.online": {
+      "backend": "gcs",
+      "bucket": "unid-online-public",
+      "prefix": "",
+      "project": "my-gcp-project"
+    },
+    "ica.example.net": {
+      "backend": "ssh-rsync",
+      "host": "deploy.example.net",
+      "port": 22,
+      "remotePath": "/var/www/ica.example.net/public/",
+      "usernameEnv": "ICA_SSH_USER",
+      "identityFile": "~/.ssh/id_ed25519"
+    }
+  }
+}
