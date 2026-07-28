@@ -68,8 +68,8 @@ Then preview the upload without changing anything:
 
 ```bash
 node ./bin/dataspace-ca-cli.js deploy:static \
-  --domain ica.accuro.es \
-  --source-dir output/ica.accuro.es \
+  --domain ca.unid.online \
+  --source-dir output/ca.unid.online \
   --config deploy-targets.json \
   --check-only
 ```

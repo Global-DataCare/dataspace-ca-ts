@@ -1,0 +1,17 @@
+{
+  "name": "dataspace-ca",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Offline dataspace CA CLI for deterministic staging PKI and static trust publication",
+  "bin": {
+    "dataspace-ca-cli": "./bin/dataspace-ca-cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node ./bin/dataspace-ca-cli.js",
+    "check": "node --check ./bin/dataspace-ca-cli.js && node --check ./bin/lib/bootstrap-common.js && node --check ./bin/lib/dataspace-ca-bootstrap.js && node --check ./bin/lib/dataspace-ca-publish.js && node --check ./bin/lib/dataspace-ca-deploy.js"
+  }
+}

@@ -101,6 +101,7 @@ build
 
 # Ignore all .json files in the root, like service account keys
 /*.json
+!package.json
 !pki-kdf.json
 !deploy-targets.example.json
 
