@@ -99,6 +99,10 @@ Env
 lib
 build
 
+# CLI source modules are not generated build output.
+!bin/lib/
+!bin/lib/*.js
+
 # Ignore all .json files in the root, like service account keys
 /*.json
 !package.json

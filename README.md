@@ -49,12 +49,45 @@ You can also export `CA_PROFILE=staging` or `CA_PROFILE=production` instead of p
 ```text
 output/public/.well-known/did.json
 output/public/.well-known/jwks.json
+output/public/.well-known/trust.json
 output/public/.well-known/dcat3/catalog.json
 output/public/.well-known/openapi.json
 output/public/pki/root-ca.pem
 output/public/pki/issuer-ca.pem
 output/public/pki/issuer-ca.chain.pem
 ```
+
+## Offline ICA CSR and signing
+
+The ICA operator creates its own key and transfers only the public submission:
+
+```bash
+node ./bin/dataspace-ca-cli.js leaf:request \
+  --domain ica.globaldatacare.es \
+  --subject-type ica \
+  --profile staging \
+  --passphrase-env ICA_LEAF_SEED_PASSPHRASE \
+  --out-dir output/ica-request
+```
+
+Keep `output/ica-request/private/leaf-key.pem` under Accuro custody. Transfer
+only `output/ica-request/submission/` to the offline UNID CA operator.
+
+The UNID operator signs the CSR without receiving the leaf private key:
+
+```bash
+node ./bin/dataspace-ca-cli.js leaf:sign \
+  --request-dir output/ica-request/submission \
+  --root-dir output/root \
+  --issuer-dir output/issuer \
+  --profile staging \
+  --out-dir output/ica-signed
+```
+
+The returned `leaf.chain.pem`, `leaf-x5c.json` and
+`activation-public.json` combine with the locally held leaf private key in the
+ICA Kubernetes Secret. Production should generate the leaf key with approved
+non-deterministic custody rather than a reproducible passphrase.
 
 ## Deploy
 
