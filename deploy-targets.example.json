@@ -1,0 +1,18 @@
+{
+  "targets": {
+    "ca.unid.online": {
+      "backend": "gcs",
+      "bucket": "replace-with-unid-ca-public-bucket",
+      "prefix": "",
+      "project": "replace-with-unid-gcp-project"
+    },
+    "ca.example.net": {
+      "backend": "ssh-rsync",
+      "host": "deploy.example.net",
+      "port": 22,
+      "remotePath": "/var/www/ca.example.net/public/",
+      "usernameEnv": "CA_SSH_USER",
+      "identityFile": "~/.ssh/id_ed25519"
+    }
+  }
+}
