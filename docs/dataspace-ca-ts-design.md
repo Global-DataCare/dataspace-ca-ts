@@ -162,6 +162,11 @@ Rules:
 - DID/JWKS patch material
 - activation bundle ZIP
 
+The implemented first executable form uses `leaf:request` at the ICA operator
+and `leaf:sign` at the offline Root/issuer operator. Only the generated
+`submission/` directory crosses the organization boundary; `private/leaf-key.pem`
+remains with the ICA operator.
+
 ### 4. ICA activation
 
 The ICA activates the signed key material and starts serving:

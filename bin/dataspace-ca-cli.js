@@ -3,7 +3,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { cmdCaBootstrapIssuer, cmdCaBootstrapRoot } from './lib/dataspace-ca-bootstrap.js';
+import {
+  cmdCaBootstrapIssuer,
+  cmdCaBootstrapRoot,
+  cmdLeafRequest,
+  cmdLeafSign,
+} from './lib/dataspace-ca-bootstrap.js';
 import { cmdDeployStatic } from './lib/dataspace-ca-deploy.js';
 import { cmdCaPublishStatic } from './lib/dataspace-ca-publish.js';
 
@@ -57,6 +62,24 @@ Usage:
     [--reproducible] \
     [--generated-at YYYYMMDDHHMMSSZ] \
     [--out-dir output/dataspace-ca/public]
+
+  dataspace-ca-cli leaf:request \
+    --domain <leaf-did-web-domain> \
+    [--subject-type ica] \
+    [--passphrase <secret> | --passphrase-env <ENV_NAME>] \
+    [--profile <staging|production>] \
+    [--alg ES384] \
+    [--out-dir output/dataspace-ca/leaf-request]
+
+  dataspace-ca-cli leaf:sign \
+    --request-dir <leaf-request/submission> \
+    --root-dir <output/dataspace-ca/root> \
+    --issuer-dir <output/dataspace-ca/issuer> \
+    [--profile <staging|production>] \
+    [--not-before YYYYMMDDHHMMSSZ] \
+    [--not-after YYYYMMDDHHMMSSZ] \
+    [--days 1825] \
+    [--out-dir output/dataspace-ca/leaf-signed]
 
   dataspace-ca-cli deploy:static \
     --domain <public-domain> \
@@ -180,6 +203,12 @@ async function main() {
       return;
     case 'publish:static':
       cmdCaPublishStatic(args, deps);
+      return;
+    case 'leaf:request':
+      cmdLeafRequest(args, deps);
+      return;
+    case 'leaf:sign':
+      cmdLeafSign(args, deps);
       return;
     case 'deploy:static':
       cmdDeployStatic(args, deps);
