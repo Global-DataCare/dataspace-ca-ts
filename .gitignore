@@ -9,6 +9,10 @@ coverage
 tmp
 *.tgz
 
+# Generated public trust publication. Deploy it from the validated local
+# output, but never mix deployment artifacts into the source release.
+output/
+
 admin*.*
 **/*.txt
 **/.DS_Store

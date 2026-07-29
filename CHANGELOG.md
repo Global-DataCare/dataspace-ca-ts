@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-07-29
+
+- Ignored generated static trust publications under `output/` so offline Root
+  CA and issuer publication runs leave the source repository clean.
+
 ## 0.2.0 - 2026-07-29
 
 - Made static publication fail closed unless the Root/issuer DID identifiers,
