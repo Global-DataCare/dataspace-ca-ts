@@ -1,6 +1,6 @@
 {
   "name": "dataspace-ca",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "Offline dataspace CA CLI for deterministic staging PKI and static trust publication",

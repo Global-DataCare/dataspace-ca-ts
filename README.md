@@ -65,13 +65,21 @@ The ICA operator creates its own key and transfers only the public submission:
 node ./bin/dataspace-ca-cli.js leaf:request \
   --domain ica.globaldatacare.es \
   --subject-type ica \
+  --certificate-profile vc-signing \
+  --key-derivation-profile ica-vc-runtime-v1 \
   --profile staging \
-  --passphrase-env ICA_LEAF_SEED_PASSPHRASE \
+  --passphrase-env ICA_VC_PRIVATE_KEY_SEED_PASSPHRASE \
   --out-dir output/ica-request
 ```
 
 Keep `output/ica-request/private/leaf-key.pem` under Accuro custody. Transfer
 only `output/ica-request/submission/` to the offline UNID CA operator.
+`ica-vc-runtime-v1` intentionally uses the same scrypt defaults, salt and
+domain separation as `dataspace-ica-ts`, so the same protected passphrase
+reproduces the already deployed ICA VC-signing key and its RFC 7638 `kid`.
+It does not derive, load or simulate the UNID Root or issuer private keys.
+The default `dataspace-leaf-v1` profile is retained only to reproduce requests
+created by older `dataspace-ca` releases.
 
 The UNID operator signs the CSR without receiving the leaf private key:
 

@@ -140,6 +140,30 @@ test('leaf CSR request keeps the private key local and offline signing returns o
   assert.equal(existsSync(path.join(signedDir, 'leaf-key.pem')), false);
 });
 
+test('ICA runtime derivation profile reproduces the dataspace-ica VC signing key contract', () => {
+  const workspace = mkdtempSync(path.join(tmpdir(), 'dataspace-ca-ica-runtime-key-test-'));
+  const requestDir = path.join(workspace, 'ica-runtime-request');
+
+  run([
+    'leaf:request',
+    '--domain', 'ica.example.test',
+    '--subject-type', 'ica',
+    '--certificate-profile', 'vc-signing',
+    '--key-derivation-profile', 'ica-vc-runtime-v1',
+    '--profile', 'staging',
+    '--passphrase', 'synthetic-ica-runtime-passphrase',
+    '--scrypt', '10:1:1:48',
+    '--out-dir', requestDir,
+  ]);
+
+  const request = readJson(path.join(requestDir, 'submission', 'leaf-request.json'));
+  assert.equal(request.certificateProfile, 'vc-signing');
+  assert.equal(request.keyDerivationProfile, 'ica-vc-runtime-v1');
+  assert.equal(request.kid, 'VxKbQlmHm1af_vLLDBgy_GCBaRGzOuW1OiC5n080TBo');
+  assert.equal(existsSync(path.join(requestDir, 'private', 'leaf-key.pem')), true);
+  assert.equal(existsSync(path.join(requestDir, 'submission', 'leaf-key.pem')), false);
+});
+
 test('organization CA CSR stays with the ICA operator and Root signs a pathLen zero subordinate', () => {
   const workspace = mkdtempSync(path.join(tmpdir(), 'dataspace-ca-organization-ca-test-'));
   const rootDir = path.join(workspace, 'root');
