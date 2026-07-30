@@ -66,6 +66,7 @@ Usage:
   dataspace-ca-cli leaf:request \
     --domain <leaf-did-web-domain> \
     [--subject-type ica] \
+    [--certificate-profile vc-signing|organization-ca] \
     [--passphrase <secret> | --passphrase-env <ENV_NAME>] \
     [--profile <staging|production>] \
     [--alg ES384] \
@@ -74,12 +75,17 @@ Usage:
   dataspace-ca-cli leaf:sign \
     --request-dir <leaf-request/submission> \
     --root-dir <output/dataspace-ca/root> \
-    --issuer-dir <output/dataspace-ca/issuer> \
+    [--issuer-dir <output/dataspace-ca/issuer>] \
     [--profile <staging|production>] \
     [--not-before YYYYMMDDHHMMSSZ] \
     [--not-after YYYYMMDDHHMMSSZ] \
     [--days 1825] \
     [--out-dir output/dataspace-ca/leaf-signed]
+
+The vc-signing profile produces a CA:FALSE ES384 leaf through the issuer CA.
+The organization-ca profile produces a CA:TRUE, pathLen=0 ES384 subordinate
+directly under the Root and is intended only to issue organization certificates.
+--issuer-dir is required only for vc-signing.
 
   dataspace-ca-cli deploy:static \
     --domain <public-domain> \

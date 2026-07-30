@@ -213,6 +213,35 @@ function createLeafExtensionsFile({ ensureDir, dnsName }) {
   };
 }
 
+function createOrganizationCaExtensionsFile({ ensureDir, dnsName }) {
+  const tempDir = mkdtempSync(path.join(tmpdir(), 'dataspace-organization-ca-ext-'));
+  const extPath = path.join(tempDir, 'openssl-ext.cnf');
+  writeFileSync(extPath, [
+    '[v3_organization_ca]',
+    'basicConstraints=critical,CA:true,pathlen:0',
+    'keyUsage=critical,keyCertSign,cRLSign',
+    'subjectKeyIdentifier=hash',
+    'authorityKeyIdentifier=keyid:always,issuer',
+    `subjectAltName=DNS:${dnsName}`,
+  ].join('\n') + '\n');
+  return {
+    extPath,
+    cleanup() {
+      rmSync(tempDir, { recursive: true, force: true });
+    },
+  };
+}
+
+function resolveLeafCertificateProfile(rawValue) {
+  const profile = String(rawValue || 'vc-signing').trim().toLowerCase();
+  if (profile !== 'vc-signing' && profile !== 'organization-ca') {
+    throw new Error(
+      '--certificate-profile must be vc-signing or organization-ca.',
+    );
+  }
+  return profile;
+}
+
 function comparableJwk(jwk) {
   const kty = String(jwk?.kty || '');
   if (kty === 'EC') return { crv: jwk.crv, kty, x: jwk.x, y: jwk.y };
@@ -637,11 +666,20 @@ export function cmdLeafRequest(args, deps) {
   if (!/^[a-z][a-z0-9-]{1,31}$/.test(subjectType)) {
     throw new Error('--subject-type must use lowercase letters, digits and hyphens.');
   }
+  const certificateProfile = resolveLeafCertificateProfile(args['certificate-profile']);
+  if (certificateProfile === 'organization-ca' && subjectType !== 'ica') {
+    throw new Error(
+      '--certificate-profile organization-ca requires --subject-type ica.',
+    );
+  }
   const passphrase = resolvePassphrase(args, requireArg);
   const alg = String(args.alg || 'ES384').trim().toUpperCase();
   assertSupportedCaAlgorithm(alg);
   const country = String(args.country || 'ES').trim().toUpperCase();
-  const commonName = String(args['common-name'] || `${subjectType.toUpperCase()} signing ${domain}`).trim();
+  const defaultCommonName = certificateProfile === 'organization-ca'
+    ? `ICA organization certification ${domain}`
+    : `${subjectType.toUpperCase()} signing ${domain}`;
+  const commonName = String(args['common-name'] || defaultCommonName).trim();
   const outDir = path.resolve(args['out-dir'] || path.join('output', 'dataspace-ca', 'leaf-request'));
   const privateDir = path.join(outDir, 'private');
   const submissionDir = path.join(outDir, 'submission');
@@ -653,7 +691,9 @@ export function cmdLeafRequest(args, deps) {
     passphrase,
     alg,
     seedConfig,
-    `gdc:v1:dataspace:leaf:${subjectType}:${domain}:${alg.toLowerCase()}`,
+    certificateProfile === 'vc-signing'
+      ? `gdc:v1:dataspace:leaf:${subjectType}:${domain}:${alg.toLowerCase()}`
+      : `gdc:v1:dataspace:leaf:${subjectType}:${certificateProfile}:${domain}:${alg.toLowerCase()}`,
   );
   const kid = computeJwkKid(keyMaterial.publicJwk);
   const privateKeyPath = path.join(privateDir, 'leaf-key.pem');
@@ -681,6 +721,7 @@ export function cmdLeafRequest(args, deps) {
   writeJson(requestPath, {
     version: 1,
     subjectType,
+    certificateProfile,
     domain,
     did: buildDidWebFromDomain(domain, normalizeDomain),
     alg,
@@ -711,29 +752,46 @@ export function cmdLeafSign(args, deps) {
   } = deps;
   const requestDir = path.resolve(requireArg(args, 'request-dir'));
   const rootDir = path.resolve(requireArg(args, 'root-dir'));
-  const issuerDir = path.resolve(requireArg(args, 'issuer-dir'));
+  const issuerDir = typeof args['issuer-dir'] === 'string' && args['issuer-dir'].trim()
+    ? path.resolve(args['issuer-dir'].trim())
+    : '';
   const outDir = path.resolve(args['out-dir'] || path.join('output', 'dataspace-ca', 'leaf-signed'));
   const requestPath = path.join(requestDir, 'leaf-request.json');
   const csrPath = path.join(requestDir, 'leaf.csr.pem');
   const publicJwkPath = path.join(requestDir, 'leaf-public-jwk.json');
-  const issuerKeyPath = path.join(issuerDir, 'issuer-key.pem');
-  const issuerCertPath = path.join(issuerDir, 'issuer-cert.pem');
-  const issuerDidPath = path.join(issuerDir, 'issuer-did.json');
+  const issuerKeyPath = issuerDir ? path.join(issuerDir, 'issuer-key.pem') : '';
+  const issuerCertPath = issuerDir ? path.join(issuerDir, 'issuer-cert.pem') : '';
+  const issuerDidPath = issuerDir ? path.join(issuerDir, 'issuer-did.json') : '';
+  const rootKeyPath = path.join(rootDir, 'root-key.pem');
   const rootCertPath = path.join(rootDir, 'root-cert.pem');
   const rootDidPath = path.join(rootDir, 'root-did.json');
-  [
+  const commonRequiredPaths = [
     requestPath,
     csrPath,
     publicJwkPath,
-    issuerKeyPath,
-    issuerCertPath,
-    issuerDidPath,
     rootCertPath,
     rootDidPath,
-  ].forEach((filePath) => {
+  ];
+  commonRequiredPaths.forEach((filePath) => {
     if (!existsSync(filePath)) throw new Error(`Missing required file: ${filePath}`);
   });
   const request = JSON.parse(readFileSync(requestPath, 'utf8'));
+  const certificateProfile = resolveLeafCertificateProfile(request.certificateProfile);
+  if (certificateProfile === 'organization-ca' && request.subjectType !== 'ica') {
+    throw new Error(
+      'organization-ca certificate profile requires subjectType "ica".',
+    );
+  }
+  if (certificateProfile === 'vc-signing') {
+    if (!issuerDir) {
+      throw new Error('--issuer-dir is required for the vc-signing certificate profile.');
+    }
+    [issuerKeyPath, issuerCertPath, issuerDidPath].forEach((filePath) => {
+      if (!existsSync(filePath)) throw new Error(`Missing required file: ${filePath}`);
+    });
+  } else if (!existsSync(rootKeyPath)) {
+    throw new Error(`Missing required file: ${rootKeyPath}`);
+  }
   const domain = normalizeDomain(String(request.domain || ''));
   const alg = String(request.alg || '').toUpperCase();
   assertSupportedCaAlgorithm(alg);
@@ -763,7 +821,18 @@ export function cmdLeafSign(args, deps) {
   const x5cPath = path.join(outDir, 'leaf-x5c.json');
   const activationPath = path.join(outDir, 'activation-public.json');
   ensureDir(outDir);
-  const extFile = createLeafExtensionsFile({ ensureDir, dnsName: domain });
+  const signingKeyPath = certificateProfile === 'organization-ca'
+    ? rootKeyPath
+    : issuerKeyPath;
+  const signingCertPath = certificateProfile === 'organization-ca'
+    ? rootCertPath
+    : issuerCertPath;
+  const extensionName = certificateProfile === 'organization-ca'
+    ? 'v3_organization_ca'
+    : 'v3_leaf';
+  const extFile = certificateProfile === 'organization-ca'
+    ? createOrganizationCaExtensionsFile({ ensureDir, dnsName: domain })
+    : createLeafExtensionsFile({ ensureDir, dnsName: domain });
   try {
     runOpenSsl([
       'x509',
@@ -771,9 +840,9 @@ export function cmdLeafSign(args, deps) {
       '-in',
       csrPath,
       '-CA',
-      issuerCertPath,
+      signingCertPath,
       '-CAkey',
-      issuerKeyPath,
+      signingKeyPath,
       '-out',
       leafCertPath,
       '-sha384',
@@ -788,42 +857,46 @@ export function cmdLeafSign(args, deps) {
       '-extfile',
       extFile.extPath,
       '-extensions',
-      'v3_leaf',
+      extensionName,
     ]);
   } finally {
     extFile.cleanup();
   }
-  runOpenSsl([
-    'verify',
-    '-CAfile',
-    rootCertPath,
-    '-untrusted',
-    issuerCertPath,
-    leafCertPath,
-  ]);
-  const chain = [
-    readFileSync(leafCertPath, 'utf8'),
-    readFileSync(issuerCertPath, 'utf8'),
-    readFileSync(rootCertPath, 'utf8'),
-  ];
+  if (certificateProfile === 'organization-ca') {
+    runOpenSsl(['verify', '-CAfile', rootCertPath, leafCertPath]);
+  } else {
+    runOpenSsl([
+      'verify',
+      '-CAfile',
+      rootCertPath,
+      '-untrusted',
+      issuerCertPath,
+      leafCertPath,
+    ]);
+  }
+  const chainPaths = certificateProfile === 'organization-ca'
+    ? [leafCertPath, rootCertPath]
+    : [leafCertPath, issuerCertPath, rootCertPath];
+  const chain = chainPaths.map((filePath) => readFileSync(filePath, 'utf8'));
   writeTextFile(ensureDir, chainPath, chain.join(''));
-  const x5c = chain.map((_, index) => readPemAsBase64Der([
-    leafCertPath,
-    issuerCertPath,
-    rootCertPath,
-  ][index]));
+  const x5c = chainPaths.map(readPemAsBase64Der);
   writeJson(x5cPath, x5c);
   const rootDid = JSON.parse(readFileSync(rootDidPath, 'utf8')).id;
-  const issuerDid = JSON.parse(readFileSync(issuerDidPath, 'utf8')).id;
+  const issuerDid = certificateProfile === 'organization-ca'
+    ? rootDid
+    : JSON.parse(readFileSync(issuerDidPath, 'utf8')).id;
   writeJson(activationPath, {
     version: 1,
     subjectType: request.subjectType,
+    certificateProfile,
     domain,
     did: request.did,
     kid: request.kid,
     alg,
     x5c,
-    x5u: `https://${domain}/.well-known/x509.pem`,
+    x5u: certificateProfile === 'organization-ca'
+      ? `https://${domain}/.well-known/organization-ca.pem`
+      : `https://${domain}/.well-known/x509.pem`,
     rootDid,
     issuerDid,
     serialHex,

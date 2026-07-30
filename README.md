@@ -89,6 +89,39 @@ The returned `leaf.chain.pem`, `leaf-x5c.json` and
 ICA Kubernetes Secret. Production should generate the leaf key with approved
 non-deterministic custody rather than a reproducible passphrase.
 
+The VC-signing certificate above is deliberately `CA:FALSE`. It must not issue
+organization certificates. Accuro creates a second key and CSR for the
+dedicated organization certification CA:
+
+```bash
+node ./bin/dataspace-ca-cli.js leaf:request \
+  --domain ica.globaldatacare.es \
+  --subject-type ica \
+  --certificate-profile organization-ca \
+  --profile staging \
+  --passphrase-env ICA_ORGANIZATION_CA_SEED_PASSPHRASE \
+  --out-dir output/ica-organization-ca-request
+```
+
+Fundación UNID signs that CSR directly with the offline Root. The Root has
+`pathLen=1`; the returned ICA subordinate is constrained to
+`CA:TRUE, pathLen=0` and therefore can issue tenant leaves but cannot create
+another CA:
+
+```bash
+node ./bin/dataspace-ca-cli.js leaf:sign \
+  --request-dir output/ica-organization-ca-request/submission \
+  --root-dir output/root \
+  --profile staging \
+  --out-dir output/ica-organization-ca-signed
+```
+
+The organization CA private key remains under Accuro custody. ICA publishes
+the public chain at `https://ica.globaldatacare.es/.well-known/organization-ca.pem`.
+This public tenant PKI is separate from Fabric MSP/TLS enrollment: a host
+generates its Fabric private keys and CSRs locally only after the governed host
+authorization flow.
+
 ## Deploy
 
 Create a local deploy config from the example:

@@ -139,3 +139,61 @@ test('leaf CSR request keeps the private key local and offline signing returns o
   assert.equal(Object.hasOwn(activation, 'privateKeyPem'), false);
   assert.equal(existsSync(path.join(signedDir, 'leaf-key.pem')), false);
 });
+
+test('organization CA CSR stays with the ICA operator and Root signs a pathLen zero subordinate', () => {
+  const workspace = mkdtempSync(path.join(tmpdir(), 'dataspace-ca-organization-ca-test-'));
+  const rootDir = path.join(workspace, 'root');
+  const requestDir = path.join(workspace, 'organization-ca-request');
+  const signedDir = path.join(workspace, 'organization-ca-signed');
+
+  run([
+    'root:bootstrap',
+    '--domain', 'ca.example.test',
+    '--profile', 'staging',
+    '--passphrase', 'synthetic-root-test-passphrase',
+    '--scrypt', '10:1:1:48',
+    '--out-dir', rootDir,
+  ]);
+  run([
+    'leaf:request',
+    '--domain', 'ica.example.test',
+    '--subject-type', 'ica',
+    '--certificate-profile', 'organization-ca',
+    '--profile', 'staging',
+    '--passphrase', 'synthetic-organization-ca-passphrase',
+    '--scrypt', '10:1:1:48',
+    '--out-dir', requestDir,
+  ]);
+
+  assert.equal(existsSync(path.join(requestDir, 'private', 'leaf-key.pem')), true);
+  assert.equal(existsSync(path.join(requestDir, 'submission', 'leaf-key.pem')), false);
+
+  run([
+    'leaf:sign',
+    '--request-dir', path.join(requestDir, 'submission'),
+    '--root-dir', rootDir,
+    '--profile', 'staging',
+    '--out-dir', signedDir,
+  ]);
+
+  const activation = readJson(path.join(signedDir, 'activation-public.json'));
+  assert.equal(activation.certificateProfile, 'organization-ca');
+  assert.equal(activation.did, 'did:web:ica.example.test');
+  assert.equal(activation.issuerDid, 'did:web:ca.example.test');
+  assert.equal(activation.rootDid, 'did:web:ca.example.test');
+  assert.equal(activation.x5c.length, 2);
+  assert.equal(
+    activation.x5u,
+    'https://ica.example.test/.well-known/organization-ca.pem',
+  );
+  assert.equal(Object.hasOwn(activation, 'privateKeyPem'), false);
+
+  const certificateText = execFileSync('openssl', [
+    'x509',
+    '-in', path.join(signedDir, 'leaf-cert.pem'),
+    '-noout',
+    '-text',
+  ], { encoding: 'utf8' });
+  assert.match(certificateText, /CA:TRUE,\s*pathlen:0/i);
+  assert.match(certificateText, /Certificate Sign, CRL Sign/i);
+});

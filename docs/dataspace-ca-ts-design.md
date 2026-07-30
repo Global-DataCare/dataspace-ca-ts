@@ -335,7 +335,22 @@ Cons:
 - more complex revocation and validation
 - more complex policy and discovery metadata
 
-Recommended default: centralized PKI first.
+Chosen boundary:
+
+- the ICA VC-signing identity is a normal `CA:FALSE` ES384 leaf signed through
+  the offline issuer CA;
+- each governed ICA may hold a separate organization certification
+  subordinate signed directly by the Root and constrained to
+  `CA:TRUE, pathLen=0`;
+- that subordinate issues only organization/tenant public X.509 leaves and its
+  public chain is discoverable from the ICA DID;
+- Fabric MSP/TLS enrollment remains a different PKI and authorization flow.
+  Hosts generate those private keys and CSRs locally after Root governance
+  approves their `HostingServiceCredential`.
+
+This is the delegated model for organization certificates without delegating
+creation of further CAs. Several ICA domains can therefore coexist and each
+tenant chain identifies the ICA that issued it.
 
 ## Recommended First Increment
 

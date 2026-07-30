@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2 - 2026-07-30
+
+- Added the `organization-ca` CSR profile so an ICA operator keeps its ES384
+  private key while Fundación UNID signs a `CA:TRUE, pathLen=0` subordinate
+  directly under the offline Root.
+- Kept the existing deterministic `vc-signing` profile byte-compatible and
+  `CA:FALSE`, published role-specific `x5u` metadata, and documented that
+  tenant X.509 issuance is separate from host Fabric MSP/TLS enrollment.
+- Added an executable synthetic proof of private-key custody, Root signature,
+  two-certificate `x5c` chain and subordinate constraints.
+
 ## 0.2.1 - 2026-07-29
 
 - Ignored generated static trust publications under `output/` so offline Root
