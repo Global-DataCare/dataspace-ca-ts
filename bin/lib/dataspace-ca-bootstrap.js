@@ -242,6 +242,25 @@ function resolveLeafCertificateProfile(rawValue) {
   return profile;
 }
 
+function resolveLeafKeyDerivationProfile(rawValue, { certificateProfile, subjectType }) {
+  const profile = String(rawValue || 'dataspace-leaf-v1').trim().toLowerCase();
+  if (profile !== 'dataspace-leaf-v1' && profile !== 'ica-vc-runtime-v1') {
+    throw new Error(
+      '--key-derivation-profile must be dataspace-leaf-v1 or ica-vc-runtime-v1.',
+    );
+  }
+  if (
+    profile === 'ica-vc-runtime-v1'
+    && (certificateProfile !== 'vc-signing' || subjectType !== 'ica')
+  ) {
+    throw new Error(
+      '--key-derivation-profile ica-vc-runtime-v1 requires '
+      + '--subject-type ica and --certificate-profile vc-signing.',
+    );
+  }
+  return profile;
+}
+
 function comparableJwk(jwk) {
   const kty = String(jwk?.kty || '');
   if (kty === 'EC') return { crv: jwk.crv, kty, x: jwk.x, y: jwk.y };
@@ -672,6 +691,10 @@ export function cmdLeafRequest(args, deps) {
       '--certificate-profile organization-ca requires --subject-type ica.',
     );
   }
+  const keyDerivationProfile = resolveLeafKeyDerivationProfile(
+    args['key-derivation-profile'],
+    { certificateProfile, subjectType },
+  );
   const passphrase = resolvePassphrase(args, requireArg);
   const alg = String(args.alg || 'ES384').trim().toUpperCase();
   assertSupportedCaAlgorithm(alg);
@@ -685,15 +708,19 @@ export function cmdLeafRequest(args, deps) {
   const submissionDir = path.join(outDir, 'submission');
   const seedConfig = parseSeedConfig(args, {
     defaultScryptProfile: '17:8:1:48',
-    defaultSalt: `gdc:dataspace:${subjectType}:leaf:seed:v1`,
+    defaultSalt: keyDerivationProfile === 'ica-vc-runtime-v1'
+      ? 'gdc:ica:vc:seed:v1'
+      : `gdc:dataspace:${subjectType}:leaf:seed:v1`,
   });
   const keyMaterial = deriveDeterministicEcKeyMaterial(
     passphrase,
     alg,
     seedConfig,
-    certificateProfile === 'vc-signing'
-      ? `gdc:v1:dataspace:leaf:${subjectType}:${domain}:${alg.toLowerCase()}`
-      : `gdc:v1:dataspace:leaf:${subjectType}:${certificateProfile}:${domain}:${alg.toLowerCase()}`,
+    keyDerivationProfile === 'ica-vc-runtime-v1'
+      ? `gdc:v1:ica:vc:${alg.toLowerCase()}`
+      : certificateProfile === 'vc-signing'
+        ? `gdc:v1:dataspace:leaf:${subjectType}:${domain}:${alg.toLowerCase()}`
+        : `gdc:v1:dataspace:leaf:${subjectType}:${certificateProfile}:${domain}:${alg.toLowerCase()}`,
   );
   const kid = computeJwkKid(keyMaterial.publicJwk);
   const privateKeyPath = path.join(privateDir, 'leaf-key.pem');
@@ -722,6 +749,7 @@ export function cmdLeafRequest(args, deps) {
     version: 1,
     subjectType,
     certificateProfile,
+    keyDerivationProfile,
     domain,
     did: buildDidWebFromDomain(domain, normalizeDomain),
     alg,

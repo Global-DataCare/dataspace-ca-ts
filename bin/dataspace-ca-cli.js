@@ -67,6 +67,7 @@ Usage:
     --domain <leaf-did-web-domain> \
     [--subject-type ica] \
     [--certificate-profile vc-signing|organization-ca] \
+    [--key-derivation-profile dataspace-leaf-v1|ica-vc-runtime-v1] \
     [--passphrase <secret> | --passphrase-env <ENV_NAME>] \
     [--profile <staging|production>] \
     [--alg ES384] \
@@ -83,6 +84,9 @@ Usage:
     [--out-dir output/dataspace-ca/leaf-signed]
 
 The vc-signing profile produces a CA:FALSE ES384 leaf through the issuer CA.
+Use --key-derivation-profile ica-vc-runtime-v1 to reproduce the key generated
+by dataspace-ica-ts from ICA_VC_PRIVATE_KEY_SEED_PASSPHRASE. The default
+dataspace-leaf-v1 remains available for byte-compatible older CA workspaces.
 The organization-ca profile produces a CA:TRUE, pathLen=0 ES384 subordinate
 directly under the Root and is intended only to issue organization certificates.
 --issuer-dir is required only for vc-signing.

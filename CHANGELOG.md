@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3 - 2026-07-30
+
+- Added the explicit `ica-vc-runtime-v1` leaf derivation profile so an ICA
+  operator can create a CSR for the exact ES384 key already regenerated from
+  `ICA_VC_PRIVATE_KEY_SEED_PASSPHRASE`.
+- Kept `dataspace-leaf-v1` as the default for byte-compatible older CA
+  workspaces and documented that neither leaf profile derives or accesses a
+  Root or issuer private key.
+
 ## 0.2.2 - 2026-07-30
 
 - Added the `organization-ca` CSR profile so an ICA operator keeps its ES384
