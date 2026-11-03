@@ -2,6 +2,9 @@
 
 Offline CA workspace for the dataspace trust anchor.
 
+Repository scope, custody and validation rules are indexed in
+[`docs/RULES_INDEX.md`](docs/RULES_INDEX.md).
+
 This repository is intentionally narrow:
 
 - bootstrap deterministic `staging` root and issuer material
